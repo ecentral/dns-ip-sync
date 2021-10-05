@@ -1,0 +1,27 @@
+name: CI
+on: [push]
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-20.04
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: Build and Push Dockerfile
+        uses: docker/build-push-action@v1.1.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: ecentral/hetzner-dns-ip-sync
+          tags: latest
+          path: .
+      - name: push README to Dockerhub
+        uses: christian-korneck/update-container-description-action@v1
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
+        with:
+          destination_container_repo: ecentral/hetzner-dns-ip-sync
+          provider: dockerhub
+          readme_file: 'README.md'
