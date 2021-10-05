@@ -1,11 +1,9 @@
-use serde::{Deserialize, Serialize};
-use reqwest::{Method, RequestBuilder};
+mod api;
+
 use local_ip_address::local_ip;
 use std::env;
-
-use crate::api::{Records, Zone};
-
-mod api;
+use api::zones::*;
+use crate::api::records::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +23,7 @@ async fn get_zone_by_name(name: &str) -> Zone {
 
 async fn get_all_records_by_name(zone_name: &str) -> Records {
     let zone = get_zone_by_name(zone_name).await;
-    api::records::get_all_records(zone.id)
+    get_all_records(zone.id).await
 }
 
 async fn delete_records_by_name(zone: &str, record_name: &str) {
@@ -35,7 +33,7 @@ async fn delete_records_by_name(zone: &str, record_name: &str) {
         .into_iter()
         .filter(|record| record.name == record_name);
     for record in data {
-        api::records::delete_record(record.id.as_str()).await;
+        delete_record(record.id.as_str()).await;
     }
 }
 
@@ -46,19 +44,16 @@ async fn create_update_record(zone_name: &str, record_name: &str, value: &str, r
         .into_iter()
         .filter(|record| record.name == record_name).count();
     if count > 1 {
-        println!("delete");
         delete_records_by_name(zone_name, record_name).await;
     }
     if count == 1 {
-        println!("update");
         let mut data = get_all_records_by_name(zone_name).await.records.into_iter()
             .filter(|record| record.name == record_name);
         let record = data.next().unwrap();
         let zone = get_zone_by_name(zone_name).await;
-        api::records::update_record(record.id.as_str(), record_name, record_type, value, zone.id).await;
+        update_record(record.id.as_str(), record_name, record_type, value, zone.id).await;
         return;
     }
-    println!("add");
     let zone = get_zone_by_name(zone_name).await;
-    api::records::create_record(record_name, record_type, value, zone.id).await;
+    create_record(record_name, record_type, value, zone.id).await;
 }

@@ -1,6 +1,31 @@
+use super::*;
 use reqwest::Method;
 
-use crate::api::{hetzner_client, Records, RecordCreate};
+#[derive(Deserialize, Debug)]
+pub struct Record {
+    #[serde(rename="type")]
+    pub record_type: String,
+    pub id: String,
+    pub created: String,
+    pub modified: String,
+    pub zone_id: String,
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct RecordCreate {
+    #[serde(rename="type")]
+    pub record_type: String,
+    pub zone_id: String,
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Records {
+    pub records: Vec<Record>
+}
 
 pub async fn create_record(name: &str, record_type: &str, value: &str, zone_id: String) -> String {
     let new_record = RecordCreate {
