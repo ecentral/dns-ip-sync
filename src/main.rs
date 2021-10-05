@@ -4,16 +4,60 @@ use local_ip_address::local_ip;
 use std::env;
 use api::zones::*;
 use crate::api::records::*;
+use seahorse::{App, Context, Flag, FlagType};
+use tokio::runtime::Runtime;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let my_local_ip = local_ip().unwrap();
-    let zone = env::var("HETZNER_ZONE").unwrap();
-    let domain = env::var("HETZNER_DOMAIN").unwrap();
-    create_update_record(zone.as_str(),domain.as_str(), my_local_ip.to_string().as_str(), "A").await;
-    let response = get_all_records_by_name(zone.as_str()).await;
-    println!("{:#?}", response.records);
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
+    let app = App::new(env!("CARGO_PKG_NAME"))
+        .description(env!("CARGO_PKG_DESCRIPTION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .usage("cli [--ip=127.0.0.1]")
+        .flag(
+            Flag::new("ip", FlagType::String)
+                .description("Use provided ip address instead of using ip of localhost")
+        )
+        .flag(
+            Flag::new("zone", FlagType::String)
+                .description("Use provided zone instead of env HETZNER_ZONE")
+        )
+        .flag(
+            Flag::new("domain", FlagType::String)
+                .description("Use provided domain instead of env HETZNER_DOMAIN")
+        )
+        .action(command);
+
+    app.run(args);
     Ok(())
+}
+
+fn command(context: &Context) {
+    let runtime = Runtime::new().expect("Init successful");
+    runtime.block_on(async move {
+        let my_local_ip = if context.string_flag("ip").is_ok() {
+            context.string_flag("ip").unwrap()
+        } else {
+            local_ip().unwrap().to_string()
+        };
+        let zone = if context.string_flag("zone").is_ok() {
+            context.string_flag("zone").unwrap()
+        } else {
+            env::var("HETZNER_ZONE").unwrap()
+        };
+        let domain = if context.string_flag("domain").is_ok() {
+            context.string_flag("domain").unwrap()
+        } else {
+            env::var("HETZNER_DOMAIN").unwrap()
+        };
+        create_update_record(zone.as_str(),domain.as_str(), my_local_ip.as_str(), "A").await;
+        let response = get_all_records_by_name(zone.as_str()).await;
+        for record in response.records {
+            if record.record_type == String::from("A") {
+                println!("{:?}", record);
+            }
+        }
+    });
 }
 
 async fn get_zone_by_name(name: &str) -> Zone {
