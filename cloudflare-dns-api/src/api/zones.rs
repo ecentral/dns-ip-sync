@@ -97,8 +97,10 @@ mod tests {
         runtime.block_on(async move {
             let zones = get_zones(Option::None).await.unwrap();
             assert!(zones.success);
-            assert_eq!(1, zones.result.len());
-            assert_eq!("example.com", zones.result[0].name.as_str());
+            assert!(zones.result.is_some());
+            let zones = zones.result.unwrap();
+            assert_eq!(1, zones.len());
+            assert_eq!("example.com", zones[0].name.as_str());
         });
     }
 }

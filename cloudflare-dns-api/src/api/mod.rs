@@ -34,7 +34,8 @@ pub fn cloudflare_client(path: &str, method: Method) -> RequestBuilder {
     let url = &mockito::server_url();
 
     let url = format!("{}/{}", url, path);
-    println!("{}: {}", method.as_str(), &url);
+    // todo: enable this for a verbose version
+    // println!("{}: {}", method.as_str(), &url);
     reqwest::Client::new()
         .request(method, url)
         .header("X-Auth-Key", key.as_str())
