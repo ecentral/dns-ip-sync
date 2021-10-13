@@ -2,9 +2,6 @@ use std::env;
 use local_ip_address::local_ip;
 use seahorse::{App, Context, Flag, FlagType};
 use tokio::runtime::Runtime;
-use tokio::join;
-use hetzner_dns_api::{create_update_record, get_all_records_by_name};
-use cloudflare_dns_api::{test};
 
 /**
 
@@ -30,11 +27,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .flag(
             Flag::new("zone", FlagType::String)
-                .description("Use provided zone instead of env HETZNER_ZONE")
+                .description("Use provided zone instead of env DNS_ZONE")
         )
         .flag(
             Flag::new("domain", FlagType::String)
-                .description("Use provided domain instead of env HETZNER_DOMAIN")
+                .description("Use provided domain instead of env DNS_DOMAIN")
         )
         .action(command);
 
@@ -45,12 +42,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn command(context: &Context) {
     let runtime = Runtime::new().expect("Init successful");
     runtime.block_on(async move {
-        if context.bool_flag("cloudflare-dns") {
-            let cloudflare = cloudflare_dns_api::test();
-            // todo: this will allow running multiple futures
-            join!(cloudflare);
-            return;
-        }
         let my_local_ip = if context.string_flag("ip").is_ok() {
             context.string_flag("ip").unwrap()
         } else {
@@ -59,19 +50,37 @@ fn command(context: &Context) {
         let zone = if context.string_flag("zone").is_ok() {
             context.string_flag("zone").unwrap()
         } else {
-            env::var("HETZNER_ZONE").unwrap()
+            env::var("DNS_ZONE").unwrap()
         };
         let domain = if context.string_flag("domain").is_ok() {
             context.string_flag("domain").unwrap()
         } else {
-            env::var("HETZNER_DOMAIN").unwrap()
+            env::var("DNS_DOMAIN").unwrap()
         };
-        let response = create_update_record(zone.as_str(), domain.as_str(), my_local_ip.as_str(), "A")
-            .then(get_all_records_by_name(zone.as_str())).await;
-        for record in response.records {
-            if record.record_type == String::from("A") {
-                println!("{:?}", record);
-            }
+        if context.bool_flag("cloudflare-dns") {
+            update_cloudflare_ip_record(zone.as_str(), domain.as_str(), my_local_ip.as_str()).await;
+        } else {
+            update_hetzner_ip_record(zone.as_str(), domain.as_str(), my_local_ip.as_str()).await;
         }
     });
+}
+
+async fn update_cloudflare_ip_record(zone: &str, domain: &str, ip_address: &str) -> () {
+    cloudflare_dns_api::create_update_record(zone, domain, ip_address, "A").await;
+    let response = cloudflare_dns_api::get_all_records_by_name(zone).await;
+    for record in response.result.unwrap() {
+        if record.record_type == String::from("A") {
+            println!("{:?}", record);
+        }
+    }
+}
+
+async fn update_hetzner_ip_record(zone: &str, domain: &str, ip_address: &str) -> () {
+    hetzner_dns_api::create_update_record(zone, domain, ip_address, "A").await;
+    let response = hetzner_dns_api::get_all_records_by_name(zone).await;
+    for record in response.records {
+        if record.record_type == String::from("A") {
+            println!("{:?}", record);
+        }
+    }
 }

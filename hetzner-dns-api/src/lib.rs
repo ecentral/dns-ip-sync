@@ -1,7 +1,7 @@
 mod api;
 
 use api::zones::*;
-use crate::api::records::*;
+use api::records::*;
 
 pub async fn get_zone_by_name(name: &str) -> Zone {
     let zones = api::zones::get_zones(Option::from(name)).await.unwrap();
