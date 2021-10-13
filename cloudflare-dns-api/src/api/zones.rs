@@ -41,12 +41,12 @@ pub struct Zone {
 /// # Arguments
 /// * `name` - filter by zone-name, e.g. example.com
 ///
-pub async fn get_zones(name: Option<&str>) -> Result<Response<Zone>, Box<dyn std::error::Error>> {
+pub async fn get_zones(name: Option<&str>) -> Result<ZonesResponse<Zone>, Box<dyn std::error::Error>> {
     let mut client = cloudflare_client("zones", Method::GET);
     if name.is_some() {
         client = client.query(&[("name", name.unwrap())]);
     }
-    Ok(client.send().await?.json::<Response<Zone>>().await?)
+    Ok(client.send().await?.json::<ZonesResponse<Zone>>().await?)
 }
 
 #[cfg(test)]

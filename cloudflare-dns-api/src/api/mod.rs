@@ -19,6 +19,14 @@ pub struct Response<T> {
     pub result: Option<Vec<T>>,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct ZonesResponse<T> {
+    pub success: bool,
+    pub errors: Option<Vec<ResponseError>>,
+    pub messages: Option<Vec<String>>,
+    pub result: Vec<T>,
+}
+
 pub fn cloudflare_client(path: &str, method: Method) -> RequestBuilder {
     let key = env::var("CLOUDFLARE_KEY").unwrap();
     let email = env::var("CLOUDFLARE_EMAIL").unwrap();
