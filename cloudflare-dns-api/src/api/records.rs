@@ -28,13 +28,13 @@ pub struct RecordCreate {
 }
 
 pub async fn get_all_records(zone_id: String) -> Response<Record> {
-    let url = format!("/zones/{}/dns_records", zone_id);
+    let url = format!("zones/{}/dns_records", zone_id);
     let client = cloudflare_client(url.as_str(), Method::GET);
     client.send().await.unwrap().json::<Response<Record>>().await.unwrap()
 }
 
-pub async fn create_record(name: &str, record_type: &str, value: &str, zone_id: String) -> Response<Record> {
-    let url = format!("/zones/{}/dns_records", zone_id);
+pub async fn create_record(name: &str, record_type: &str, value: &str, zone_id: String) -> SingleResult<Record> {
+    let url = format!("zones/{}/dns_records", zone_id);
     let new_record = RecordCreate {
         record_type: Option::Some(String::from(record_type)),
         content: Option::Some(String::from(value)),
@@ -43,18 +43,18 @@ pub async fn create_record(name: &str, record_type: &str, value: &str, zone_id: 
     };
     let client = cloudflare_client(url.as_str(), Method::POST)
         .json(&new_record);
-    client.send().await.unwrap().json::<Response<Record>>().await.unwrap()
+    client.send().await.unwrap().json::<SingleResult<Record>>().await.unwrap()
 }
 
 pub async fn delete_record(zone_id: &str, record_id: &str) -> StatusCode {
-    let url = format!("/zones/{}/dns_records/{}", zone_id, record_id);
+    let url = format!("zones/{}/dns_records/{}", zone_id, record_id);
     let client = cloudflare_client(&*url, Method::DELETE);
     client.send().await.unwrap().status()
 }
 
 
-pub async fn update_record(record_id: &str, zone_id: String, name: Option<&str>, record_type: Option<&str>, value: Option<&str>, ttl: Option<i16>) -> Response<Record> {
-    let url = format!("/zones/{}/dns_records/{}", zone_id, record_id);
+pub async fn update_record(record_id: &str, zone_id: String, name: Option<&str>, record_type: Option<&str>, value: Option<&str>, ttl: Option<i16>) -> SingleResult<Record> {
+    let url = format!("zones/{}/dns_records/{}", zone_id, record_id);
     let update_record = RecordCreate {
         record_type: match record_type.is_some() {
             true => Option::Some(String::from(record_type.unwrap())),
@@ -76,5 +76,5 @@ pub async fn update_record(record_id: &str, zone_id: String, name: Option<&str>,
         Method::PATCH
     };
     let client = cloudflare_client(url.as_str(), method).json(&update_record);
-    client.send().await.unwrap().json::<Response<Record>>().await.unwrap()
+    client.send().await.unwrap().json::<SingleResult<Record>>().await.unwrap()
 }

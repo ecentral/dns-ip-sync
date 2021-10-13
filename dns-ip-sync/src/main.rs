@@ -1,4 +1,5 @@
 use std::env;
+use std::error::Error;
 use local_ip_address::local_ip;
 use seahorse::{App, Context, Flag, FlagType};
 use tokio::runtime::Runtime;
@@ -68,6 +69,10 @@ fn command(context: &Context) {
 async fn update_cloudflare_ip_record(zone: &str, domain: &str, ip_address: &str) -> () {
     cloudflare_dns_api::create_update_record(zone, domain, ip_address, "A").await;
     let response = cloudflare_dns_api::get_all_records_by_name(zone).await;
+    let response = match response {
+        Ok(r) => r,
+        Err(e) => panic!("{:?}", e)
+    };
     for record in response.result.unwrap() {
         if record.record_type == String::from("A") {
             println!("{:?}", record);

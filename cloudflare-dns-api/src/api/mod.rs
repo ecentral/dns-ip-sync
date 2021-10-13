@@ -19,6 +19,11 @@ pub struct Response<T> {
     pub result: Option<Vec<T>>,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct SingleResult<T> {
+    pub result: Option<T>,
+}
+
 pub fn cloudflare_client(path: &str, method: Method) -> RequestBuilder {
     let key = env::var("CLOUDFLARE_KEY").unwrap();
     let email = env::var("CLOUDFLARE_EMAIL").unwrap();
@@ -29,6 +34,7 @@ pub fn cloudflare_client(path: &str, method: Method) -> RequestBuilder {
     let url = &mockito::server_url();
 
     let url = format!("{}/{}", url, path);
+    println!("{}: {}", method.as_str(), &url);
     reqwest::Client::new()
         .request(method, url)
         .header("X-Auth-Key", key.as_str())

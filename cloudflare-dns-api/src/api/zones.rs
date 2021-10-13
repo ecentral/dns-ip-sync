@@ -1,3 +1,5 @@
+use reqwest::Error;
+use crate::ResultError;
 use super::*;
 
 #[derive(Deserialize, Debug)]
@@ -46,7 +48,15 @@ pub async fn get_zones(name: Option<&str>) -> Result<Response<Zone>, Box<dyn std
     if name.is_some() {
         client = client.query(&[("name", name.unwrap())]);
     }
-    Ok(client.send().await?.json::<Response<Zone>>().await?)
+    let response = client.send().await.unwrap_or_else(|error| {
+        panic!(error)
+    });
+    let response = response.json::<Response<Zone>>().await?;
+    if response.success {
+        Ok(response)
+    } else {
+        Result::Err(Box::from(ResultError(String::from(response.messages.unwrap().join(" - ")))))
+    }
 }
 
 #[cfg(test)]
