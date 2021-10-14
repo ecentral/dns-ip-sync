@@ -5,7 +5,7 @@ use api::records::*;
 
 pub async fn get_zone_by_name(name: &str) -> Zone {
     let zones = api::zones::get_zones(Option::from(name)).await.unwrap();
-    zones.zones.into_iter().next().unwrap()
+    zones.zones.unwrap().into_iter().next().unwrap()
 }
 
 pub async fn get_all_records_by_name(zone_name: &str) -> Records {
