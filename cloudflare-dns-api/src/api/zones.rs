@@ -1,5 +1,4 @@
-use reqwest::Error;
-use crate::ResultError;
+use crate::{ResultResponseError};
 use super::*;
 
 #[derive(Deserialize, Debug)]
@@ -48,14 +47,13 @@ pub async fn get_zones(name: Option<&str>) -> Result<Response<Zone>, Box<dyn std
     if name.is_some() {
         client = client.query(&[("name", name.unwrap())]);
     }
-    let response = client.send().await.unwrap_or_else(|error| {
-        panic!(error)
-    });
+    let response = client.send().await?;
     let response = response.json::<Response<Zone>>().await?;
     if response.success {
         Ok(response)
     } else {
-        Result::Err(Box::from(ResultError(String::from(response.messages.unwrap().join(" - ")))))
+        let error = ResultResponseError::from(response);
+        Result::Err(Box::from(error))
     }
 }
 
@@ -67,7 +65,7 @@ mod tests {
     use std::env;
 
     #[test]
-    fn test_get_zones() {
+    fn test_get_zones_successfully() {
         env::set_var("CLOUDFLARE_KEY", "");
         env::set_var("CLOUDFLARE_EMAIL", "");
         let _m = mock("GET", "/zones")
@@ -101,6 +99,33 @@ mod tests {
             let zones = zones.result.unwrap();
             assert_eq!(1, zones.len());
             assert_eq!("example.com", zones[0].name.as_str());
+        });
+    }
+
+    #[test]
+    fn test_get_zones_status_is_false() {
+        env::set_var("CLOUDFLARE_KEY", "");
+        env::set_var("CLOUDFLARE_EMAIL", "");
+        let _m = mock("GET", "/zones")
+            .with_header("content-type", "application/json")
+            .with_body(r#"
+            {
+                "success": false,
+                "errors": [
+                    {"code": 1074, "message": "Could not find a valid zone."}
+                ]
+            }
+            "#)
+            .create();
+        let runtime = Runtime::new().expect("Init successful");
+        runtime.block_on(async move {
+            let result = get_zones(Option::None).await;
+            assert!(result.is_err());
+            let error = result.err();
+            assert!(error.is_some());
+            let error: Box<ResultResponseError> = error.unwrap().downcast().unwrap();
+            assert_eq!(1, error.errors.len());
+            assert_eq!("There is an error:\n1074: Could not find a valid zone.", format!("{}", error));
         });
     }
 }

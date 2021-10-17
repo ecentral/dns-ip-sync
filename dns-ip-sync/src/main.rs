@@ -1,5 +1,4 @@
 use std::env;
-use std::error::Error;
 use local_ip_address::local_ip;
 use seahorse::{App, Context, Flag, FlagType};
 use tokio::runtime::Runtime;

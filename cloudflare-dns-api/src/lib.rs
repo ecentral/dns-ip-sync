@@ -1,20 +1,45 @@
 mod api;
 
 use std::error::Error;
-use api::Response;
+use std::fmt::{Debug, Formatter};
+use api::{Response, ResponseError};
 use api::zones::*;
 use api::records::*;
 
 #[derive(Debug)]
 pub struct ResultError(String);
 
+#[derive(Debug)]
+pub struct ResultResponseError {
+    pub errors: Vec<ResponseError>
+}
+
 impl std::fmt::Display for ResultError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "There is an error: {}", self.0)
     }
 }
 
+impl std::fmt::Display for ResultResponseError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let errors = &self.errors;
+        let errors: Vec<String> = errors.into_iter().map(|x| format!("{}: {}", x.code, x.message)).collect();
+        write!(f, "There is an error:\n{}", errors.join("\n"))
+    }
+}
+
 impl Error for ResultError {}
+
+impl Error for ResultResponseError {}
+
+impl<T> From<Response<T>> for ResultResponseError {
+    fn from(item: Response<T>) -> Self {
+        let default = ResponseError {code: 0, message: "Unknown Error.".parse().unwrap() };
+        ResultResponseError {
+            errors: item.errors.unwrap_or(vec!(default))
+        }
+    }
+}
 
 pub async fn get_zone_by_name(name: &str) -> Result<Zone, Box<dyn Error>> {
     let zones = api::zones::get_zones(Option::from(name)).await.unwrap();
@@ -60,7 +85,7 @@ pub async fn create_update_record(zone_name: &str, record_name: &str, value: &st
         .collect::<Vec<_>>();
     let count = records.len();
     if count > 1 {
-        delete_records_by_name(zone_name, record_name).await;
+        delete_records_by_name(zone_name, record_name).await?;
     }
     if count == 1 {
         let mut records = records.iter();
