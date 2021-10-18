@@ -5,6 +5,7 @@ use std::fmt::{Debug, Formatter};
 use api::{Response, ResponseError};
 use api::zones::*;
 use api::records::*;
+use crate::api::SingleResult;
 
 #[derive(Debug)]
 pub struct ResultError(String);
@@ -41,6 +42,15 @@ impl<T> From<Response<T>> for ResultResponseError {
     }
 }
 
+impl<T> From<SingleResult<T>> for ResultResponseError {
+    fn from(item: SingleResult<T>) -> Self {
+        let default = ResponseError {code: 0, message: "Unknown Error.".parse().unwrap() };
+        ResultResponseError {
+            errors: item.errors.unwrap_or(vec!(default))
+        }
+    }
+}
+
 pub async fn get_zone_by_name(name: &str) -> Result<Zone, Box<dyn Error>> {
     let zones = api::zones::get_zones(Option::from(name)).await.unwrap();
     let zones = match zones.result {
@@ -58,7 +68,7 @@ pub async fn get_all_records_by_name(zone_name: &str) -> Result<Response<Record>
         Ok(zone) => zone,
         Err(e) => return Err(e)
     };
-    Ok(get_all_records(zone.id).await)
+    Ok(get_all_records(zone.id).await?)
 }
 
 
