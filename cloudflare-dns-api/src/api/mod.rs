@@ -21,8 +21,24 @@ pub struct Response<T> {
 
 #[derive(Deserialize, Debug)]
 pub struct SingleResult<T> {
+    pub success: bool,
     pub result: Option<T>,
+    pub errors: Option<Vec<ResponseError>>,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct OnlyResult<T> {
+    pub result: T,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OnlyId {
+    pub id: String,
+}
+
+type ResultResponse<T> = Result<Response<T>, Box<dyn std::error::Error>>;
+type SingleResultResponse<T> = Result<SingleResult<T>, Box<dyn std::error::Error>>;
+type OnlyResultResponse<T> = Result<OnlyResult<T>, Box<dyn std::error::Error>>;
 
 pub fn cloudflare_client(path: &str, method: Method) -> RequestBuilder {
     let key = env::var("CLOUDFLARE_KEY").unwrap();
